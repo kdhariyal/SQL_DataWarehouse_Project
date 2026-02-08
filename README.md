@@ -1,4 +1,4 @@
-# 🏗️ Modern Data Warehouse: End-to-End SQL Server Engineering & Analytics
+# 🏗️ Data Warehouse: End-to-End SQL Server Engineering & Analytics
 
 ![Project Status](https://img.shields.io/badge/Status-Completed-success)
 ![Data Architecture](https://img.shields.io/badge/Architecture-Medallion_(Bronze_Silver_Gold)-orange)
