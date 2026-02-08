@@ -49,7 +49,6 @@ This repository showcases core technical competencies for:
 * **Scope:** Focus on the latest dataset only; historization of data is not required.
 * **Documentation:** Provide clear documentation of the data model to support both business stakeholders and analytics teams.
 
-[Image of Star Schema showing fact and dimension tables]
 
 ### 2️⃣ Data Analysis (BI & Reporting)
 **Objective:** Leverage SQL to extract high-value insights regarding:
