@@ -8,7 +8,6 @@
 ## 📖 Project Overview
 This project demonstrates the design and implementation of a robust, modern data warehouse using **SQL Server**. Following the industry-standard **Medallion Architecture**, the system transforms raw ERP and CRM data into a high-performance analytical engine optimized for business intelligence.
 
-[Image of Medallion Architecture layers Bronze Silver Gold]
 
 ### 🧩 Key Components:
 * **Data Architecture:** Implementing a 3-layer Medallion structure (Bronze ➔ Silver ➔ Gold).
