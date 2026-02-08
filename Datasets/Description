@@ -1,0 +1,91 @@
+/* ============================================================================================
+   📁 FILE: cust_info.csv — CUSTOMER MASTER DATA
+   ============================================================================================
+   DESCRIPTION:
+   Contains core customer information used for building the customer dimension.
+
+   COLUMNS:
+   - cst_id             → Unique customer identifier (Primary Key)
+   - cst_key            → Customer reference or alternate key
+   - cst_firstname      → First name of the customer
+   - cst_lastname       → Last name of the customer
+   - cst_martial_status → Marital status code (e.g., 'S', 'M')
+   - cst_gndr           → Gender code (e.g., 'M', 'F')
+   - cst_create_date    → Record creation date
+
+   USED IN:
+   - silver.crm_cust_info (after cleaning, standardization, deduplication)
+*/
+
+
+/* ============================================================================================
+   📁 FILE: prd_info.csv — PRODUCT MASTER DATA
+   ============================================================================================
+   DESCRIPTION:
+   Contains product catalog including names, categories, pricing, and availability periods.
+
+   COLUMNS:
+   - prd_id        → Product ID (Primary Key)
+   - prd_key       → Encoded string (first part is category, second part is product code)
+   - prd_nm        → Product name
+   - prd_cost      → Base product cost
+   - prd_line      → Product line category (e.g., 'R' = Road, 'M' = Mountain)
+   - prd_start_dt  → Product start date
+   - prd_end_dt    → Product end date
+
+   USED IN:
+   - silver.crm_prd_info (with mapping and transformation of product line)
+*/
+
+
+/* ============================================================================================
+   📁 FILE: sales_details.csv — SALES TRANSACTION DATA
+   ============================================================================================
+   DESCRIPTION:
+   Transactional data capturing order info, dates, quantity, and pricing.
+
+   COLUMNS:
+   - sls_ord_num   → Sales order number (Primary Key)
+   - sls_ord_key   → Product key (links to prd_info)
+   - sls_cust_id   → Customer ID (links to cust_info)
+   - sls_ord_dt    → Order date (may be in YYYYMMDD format)
+   - sls_ship_dt   → Shipping date
+   - sls_due_dt    → Due date
+   - sls_sales     → Total sale value
+   - sls_quantity  → Units sold
+   - sls_price     → Unit price
+
+   USED IN:
+   - silver.crm_sales_details (with pricing logic & date validation)
+*/
+
+
+/* ============================================================================================
+   📁 FILE: CUST_AZ12.csv — CUSTOMER ENRICHMENT DATA
+   ============================================================================================
+   DESCRIPTION:
+   Enrichment file with demographic attributes sourced from ERP systems.
+
+   COLUMNS:
+   - cid     → Customer ID (may be prefixed, e.g., 'NAS123')
+   - bdate   → Birthdate
+   - gen     → Gender (e.g., 'F', 'M', 'Female', 'Male')
+
+   USED IN:
+   - silver.erp_cust_az12 (after standardization and cleaning)
+*/
+
+
+/* ============================================================================================
+   📁 FILE: LOC_A101.csv — CUSTOMER LOCATION DATA
+   ============================================================================================
+   DESCRIPTION:
+   Maps customers to their country of residence.
+
+   COLUMNS:
+   - cid    → Customer ID (may contain formatting inconsistencies like hyphens)
+   - cntry  → Country code or name (e.g., 'US', 'USA', 'DE')
+
+   USED IN:
+   - silver.erp_loc_a101 (after applying standardization rules)
+*/

@@ -1,0 +1,193 @@
+/* ============================================================================================
+   🧠 1. Explore Database Metadata
+============================================================================================ */
+
+-- List all tables
+SELECT * 
+FROM INFORMATION_SCHEMA.TABLES;
+
+-- View column details of 'dim_customers'
+SELECT * 
+FROM INFORMATION_SCHEMA.COLUMNS 
+WHERE TABLE_NAME = 'dim_customers';
+
+
+/* ============================================================================================
+   📊 2. Dimension Exploration
+============================================================================================ */
+
+-- All countries in the customer base
+SELECT DISTINCT country 
+FROM gold.dim_customers;
+
+-- All combinations of category, subcategory, and product names
+SELECT DISTINCT category, subcategory, product_name 
+FROM gold.dim_products 
+ORDER BY category, subcategory, product_name;
+
+
+/* ============================================================================================
+   🗓️ 3. Date Exploration
+============================================================================================ */
+
+-- Explore order date range and span
+SELECT 
+    MAX(order_date) AS latest_order_date,
+    MIN(order_date) AS earliest_order_date,
+    DATEDIFF(YEAR, MIN(order_date), MAX(order_date)) AS data_span_years
+FROM gold.fact_sales;
+
+-- Find the youngest and oldest customers
+SELECT 
+    MAX(DOB) AS youngest_dob,
+    DATEDIFF(YEAR, MAX(DOB), GETDATE()) AS youngest_age,
+    MIN(DOB) AS oldest_dob,
+    DATEDIFF(YEAR, MIN(DOB), MAX(DOB)) AS age_span
+FROM gold.dim_customers;
+
+
+/* ============================================================================================
+   📐 4. Measures Exploration
+============================================================================================ */
+
+-- Total sales
+SELECT SUM(sales_amount) AS total_sales 
+FROM gold.fact_sales;
+
+-- Total items sold
+SELECT SUM(quantity) AS total_quantity_sold 
+FROM gold.fact_sales;
+
+-- Average selling price
+SELECT AVG(price) AS avg_selling_price 
+FROM gold.fact_sales;
+
+-- Total number of orders
+SELECT COUNT(DISTINCT order_number) AS total_orders 
+FROM gold.fact_sales;
+
+-- Total number of products
+SELECT COUNT(DISTINCT product_key) AS total_products 
+FROM gold.dim_products;
+
+-- Total number of unique customers
+SELECT COUNT(DISTINCT customer_key) AS total_customers 
+FROM gold.fact_sales;
+
+
+/* ============================================================================================
+   📋 5. Key Business Metrics Summary
+============================================================================================ */
+
+SELECT 'Total Sales' AS measure_name, SUM(sales_amount) AS measure_value FROM gold.fact_sales
+UNION ALL
+SELECT 'Total Quantity', SUM(quantity) FROM gold.fact_sales
+UNION ALL
+SELECT 'Average Price', AVG(price) FROM gold.fact_sales
+UNION ALL
+SELECT 'Total Orders', COUNT(DISTINCT order_number) FROM gold.fact_sales
+UNION ALL
+SELECT 'Total Products', COUNT(DISTINCT product_key) FROM gold.dim_products
+UNION ALL
+SELECT 'Total Customers', COUNT(DISTINCT customer_key) FROM gold.dim_customers;
+
+
+/* ============================================================================================
+   📈 6. Magnitude Analysis by Dimensions
+============================================================================================ */
+
+-- Customers by country
+SELECT 
+    country, 
+    COUNT(customer_key) AS total_customers 
+FROM gold.dim_customers 
+GROUP BY country 
+ORDER BY total_customers DESC;
+
+-- Customers by gender
+SELECT 
+    gender, 
+    COUNT(customer_key) AS total_customers 
+FROM gold.dim_customers 
+GROUP BY gender 
+ORDER BY total_customers DESC;
+
+-- Products by category
+SELECT 
+    category, 
+    COUNT(product_key) AS total_products 
+FROM gold.dim_products 
+GROUP BY category 
+ORDER BY total_products DESC;
+
+-- Average cost in each category
+SELECT 
+    category, 
+    AVG(cost) AS avg_cost 
+FROM gold.dim_products 
+GROUP BY category 
+ORDER BY avg_cost DESC;
+
+-- Total revenue by product category
+SELECT 
+    p.category, 
+    SUM(s.price) AS total_sales 
+FROM gold.fact_sales s
+LEFT JOIN gold.dim_products p ON s.product_key = p.product_key 
+GROUP BY p.category 
+ORDER BY total_sales DESC;
+
+-- Total revenue by customer
+SELECT 
+    c.first_name + ' ' + ISNULL(c.last_name, '') AS customer_name,
+    SUM(s.price) AS total_sales 
+FROM gold.fact_sales s
+LEFT JOIN gold.dim_customers c ON s.customer_key = c.customer_key 
+GROUP BY c.first_name + ' ' + ISNULL(c.last_name, '') 
+ORDER BY total_sales DESC;
+
+-- Distribution of products sold by country
+SELECT 
+    c.country, 
+    SUM(s.quantity) AS total_quantity 
+FROM gold.fact_sales s
+LEFT JOIN gold.dim_customers c ON s.customer_key = c.customer_key 
+GROUP BY c.country 
+ORDER BY total_quantity DESC;
+
+
+/* ============================================================================================
+   🏆 7. Rankings
+============================================================================================ */
+
+-- Top 5 highest revenue-generating products
+SELECT TOP 5
+    p.product_name,
+    SUM(s.sales_amount) AS total_sales,
+    DENSE_RANK() OVER (ORDER BY SUM(s.sales_amount) DESC) AS ranking
+FROM gold.fact_sales s
+LEFT JOIN gold.dim_products p ON s.product_key = p.product_key 
+GROUP BY p.product_name;
+
+-- Bottom performing products (optional: extend with TOP or limit logic)
+SELECT 
+    p.product_name,
+    SUM(s.sales_amount) AS total_sales,
+    DENSE_RANK() OVER (ORDER BY SUM(s.sales_amount)) AS ranking
+FROM gold.fact_sales s
+LEFT JOIN gold.dim_products p ON s.product_key = p.product_key 
+GROUP BY p.product_name;
+
+
+-- Top 5 Performing Customers by Revenue
+
+
+SELECT TOP 5
+    c.first_name + ' ' + ISNULL(c.last_name, '') AS customer_name,
+    SUM(s.sales_amount) AS total_sales,
+    DENSE_RANK() OVER (ORDER BY SUM(s.sales_amount) DESC) AS ranking
+FROM gold.fact_sales s
+LEFT JOIN gold.dim_customers c 
+    ON s.customer_key = c.customer_key
+GROUP BY c.first_name + ' ' + ISNULL(c.last_name, '')
+ORDER BY total_sales DESC;

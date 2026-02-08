@@ -1,0 +1,269 @@
+/*
+   ============================================================================================
+                               🧼 DATA QUALITY & VALIDATION CHECKS
+   ============================================================================================
+   Description: Perform QA checks on raw bronze tables before transformation to silver layer.
+   Includes: Duplicate checks, formatting issues, key mismatches, null validations, and data consistency issues.
+   ============================================================================================
+*/
+
+
+/* ============================================================================================
+   🔍 1. bronze.crm_cust_info — Customer Master Checks
+   ============================================================================================ */
+
+-- Preview customer data
+SELECT * FROM bronze.crm_cust_info;
+
+-- ✅ Check for duplicate or null primary keys (cst_id)
+SELECT cst_id, COUNT(*)
+FROM bronze.crm_cust_info
+GROUP BY cst_id
+HAVING COUNT(*) > 1 OR cst_id IS NULL;
+
+-- ✅ Check for NULLs in critical fields
+SELECT *
+FROM bronze.crm_cust_info
+WHERE cst_id IS NULL OR cst_key IS NULL OR cst_firstname IS NULL OR cst_lastname IS NULL;
+
+-- 🚫 Check for unrealistic creation dates (future records)
+SELECT *
+FROM bronze.crm_cust_info
+WHERE cst_create_date > GETDATE();
+
+-- 🔎 Deep dive: Review specific or duplicate record
+SELECT * FROM bronze.crm_cust_info WHERE cst_id = 29466;
+
+-- 🏁 Flag latest record per customer
+WITH flagged AS (
+    SELECT *, ROW_NUMBER() OVER (PARTITION BY cst_id ORDER BY cst_create_date) AS flag_last
+    FROM bronze.crm_cust_info
+)
+SELECT * FROM flagged WHERE flag_last = 1;
+
+-- ⚠️ Check for leading/trailing spaces in names
+SELECT cst_firstname FROM bronze.crm_cust_info WHERE cst_firstname <> TRIM(cst_firstname);
+SELECT cst_lastname FROM bronze.crm_cust_info WHERE cst_lastname <> TRIM(cst_lastname);
+
+-- 🧾 Gender standardization check
+SELECT DISTINCT cst_gndr FROM bronze.crm_cust_info;
+
+
+
+/* ============================================================================================
+   🔍 2. bronze.crm_prd_info — Product Info Checks
+   ============================================================================================ */
+
+-- 🔍 Preview product records
+SELECT [prd_id], [prd_key], [prd_nm], [prd_cost], [prd_line], [prd_start_dt], [prd_end_dt]
+FROM bronze.crm_prd_info;
+
+-- ✅ Check for duplicate or null product IDs
+SELECT prd_id, COUNT(*) 
+FROM bronze.crm_prd_info
+GROUP BY prd_id
+HAVING COUNT(*) > 1 OR prd_id IS NULL;
+
+-- ✅ Check for NULLs in important fields
+SELECT *
+FROM bronze.crm_prd_info
+WHERE prd_id IS NULL OR prd_key IS NULL OR prd_nm IS NULL;
+
+-- 🚫 Check for products with future start dates
+SELECT *
+FROM bronze.crm_prd_info
+WHERE prd_start_dt > GETDATE();
+
+-- 🧩 Break prd_key into cat_id and key, and validate linkage to sales
+SELECT
+    prd_id,
+    prd_key,
+    REPLACE(SUBSTRING(prd_key, 1, 5), '-', '_') AS cat_id,
+    SUBSTRING(prd_key, 7, LEN(prd_key)) AS prd_key,
+    prd_nm,
+    prd_cost,
+    prd_line,
+    prd_start_dt,
+    prd_end_dt
+FROM bronze.crm_prd_info
+WHERE SUBSTRING(prd_key, 7, LEN(prd_key)) NOT IN (
+    SELECT sls_ord_key FROM bronze.crm_sales_details
+);
+
+-- ✂️ Check for unwanted spaces in product names
+SELECT prd_nm FROM bronze.crm_prd_info WHERE prd_nm <> TRIM(prd_nm);
+
+-- ❌ Check for NULL or negative product costs
+SELECT * FROM bronze.crm_prd_info WHERE prd_cost IS NULL OR prd_cost < 0;
+
+-- 📦 List distinct product line codes
+SELECT DISTINCT prd_line FROM bronze.crm_prd_info;
+
+-- 🗓️ Validate date consistency (end date should not be earlier than start)
+SELECT * FROM bronze.crm_prd_info WHERE prd_end_dt < prd_start_dt;
+
+
+
+/* ============================================================================================
+   🔍 3. bronze.crm_sales_details — Sales Transactions Checks
+   ============================================================================================ */
+
+-- 🔗 Validate foreign key (customer ID must exist in customer master)
+SELECT * 
+FROM bronze.crm_sales_details
+WHERE sls_cust_id NOT IN (
+    SELECT cst_id FROM silver.crm_cust_info
+);
+
+-- ✅ Check for NULLs in key fields
+SELECT *
+FROM bronze.crm_sales_details
+WHERE sls_ord_num IS NULL OR sls_cust_id IS NULL OR sls_ord_dt IS NULL;
+
+-- 🚫 Check for future order dates
+SELECT *
+FROM bronze.crm_sales_details
+WHERE sls_ord_dt > CONVERT(INT, FORMAT(GETDATE(), 'yyyyMMdd'));
+
+-- 📆 Check sls_ord_dt format, length, and range
+SELECT *
+FROM bronze.crm_sales_details
+WHERE sls_ord_dt <= 0 
+    OR LEN(sls_ord_dt) != 8
+    OR sls_ord_dt > 20500101
+    OR sls_ord_dt < 19000101;
+
+-- 📦 Validate sls_ship_dt
+SELECT sls_ship_dt
+FROM bronze.crm_sales_details
+WHERE sls_ship_dt <= 0 
+    OR LEN(sls_ship_dt) != 8
+    OR sls_ship_dt > 20500101
+    OR sls_ship_dt < 19000101;
+
+-- 🔄 Validate sls_due_dt
+SELECT sls_due_dt
+FROM bronze.crm_sales_details
+WHERE sls_due_dt <= 0 
+    OR LEN(sls_due_dt) != 8
+    OR sls_due_dt > 20500101
+    OR sls_due_dt < 19000101;
+
+-- ⚖️ Logical validation: order date should be before ship date
+SELECT *
+FROM bronze.crm_sales_details
+WHERE sls_ord_dt > sls_ship_dt 
+   OR sls_due_dt > sls_ship_dt;
+
+-- 🧮 Validate sales = quantity × price, and check for nulls or invalid values
+SELECT DISTINCT
+    sls_sales,
+    sls_quantity,
+    sls_price
+FROM bronze.crm_sales_details
+WHERE sls_sales != sls_quantity * sls_price
+    OR sls_sales IS NULL 
+    OR sls_quantity IS NULL 
+    OR sls_price IS NULL
+    OR sls_sales <= 0 
+    OR sls_quantity <= 0 
+    OR sls_price <= 0
+ORDER BY sls_sales, sls_quantity, sls_price;
+
+
+
+/* ============================================================================================
+   🔍 4. bronze.erp_cust_az12 — External Customer Enrichment
+   ============================================================================================ */
+
+-- 🔎 Check for untrimmed customer IDs
+SELECT cid FROM bronze.erp_cust_az12 WHERE cid <> TRIM(cid);
+
+-- ✅ Check for NULLs in critical fields
+SELECT *
+FROM bronze.erp_cust_az12
+WHERE cid IS NULL OR gen IS NULL;
+
+-- 🎂 Check for unrealistic age (bdate too old or future)
+SELECT *
+FROM bronze.erp_cust_az12
+WHERE bdate IS NOT NULL
+  AND (DATEDIFF(YEAR, bdate, GETDATE()) < 0 OR DATEDIFF(YEAR, bdate, GETDATE()) > 120);
+
+-- 👁️ Preview transformed output (CID key conversion)
+SELECT
+    cid,
+    SUBSTRING(cid, 4, LEN(cid)) AS cst_key,
+    bdate,
+    gen
+FROM bronze.erp_cust_az12;
+
+
+
+/* ============================================================================================
+   🔍 5. bronze.erp_loc_a101 — Location Standardization Checks
+   ============================================================================================ */
+
+-- 🗺️ Preview raw location data
+SELECT cid, cntry FROM bronze.erp_loc_a101;
+
+-- ✅ Check for NULLs in location fields
+SELECT *
+FROM bronze.erp_loc_a101
+WHERE cid IS NULL OR cntry IS NULL;
+
+-- 🚫 Check for unexpected special characters in cntry
+SELECT *
+FROM bronze.erp_loc_a101
+WHERE cntry LIKE '%[^A-Za-z ]%';
+
+-- 📋 View unique country values
+SELECT DISTINCT cntry FROM bronze.erp_loc_a101;
+
+-- 🌍 Validate and standardize country names
+SELECT DISTINCT
+    cntry AS old_cntry,
+    CASE 
+        WHEN TRIM(cntry) = 'DE' THEN 'Germany'
+        WHEN TRIM(cntry) IN ('US', 'USA') THEN 'United States'
+        WHEN TRIM(cntry) = '' OR cntry IS NULL THEN 'NA'
+        ELSE TRIM(cntry)
+    END AS standardized_cntry
+FROM bronze.erp_loc_a101
+ORDER BY cntry;
+
+-- 👁️ Check already transformed data (optional)
+SELECT * FROM silver.erp_loc_a101;
+
+
+
+/* ============================================================================================
+   🔍 6. bronze.erp_px_cat_g1v2 — Product Category Checks
+   ============================================================================================ */
+
+-- 📊 Preview product category data
+SELECT 
+    id,
+    cat,
+    subcat,
+    maintenance
+FROM bronze.erp_px_cat_g1v2;
+
+-- ✅ Check for NULLs in category fields
+SELECT *
+FROM bronze.erp_px_cat_g1v2
+WHERE id IS NULL OR cat IS NULL OR subcat IS NULL;
+
+-- 🚫 Check for overly long category/subcategory names
+SELECT *
+FROM bronze.erp_px_cat_g1v2
+WHERE LEN(cat) > 50 OR LEN(subcat) > 50;
+
+-- ✂️ Check for extra spaces in maintenance field
+SELECT 
+    id,
+    cat,
+    subcat,
+    maintenance
+FROM bronze.erp_px_cat_g1v2
+WHERE maintenance <> TRIM(maintenance);
