@@ -29,8 +29,6 @@ This repository showcases core technical competencies for:
 | :--- | :--- | :--- |
 | **Database** | SQL Server Express | Hosting the Data Warehouse |
 | **IDE** | SSMS | Database management and SQL development |
-| **Design** | [Draw.io](https://draw.io) | Architecture & ERD Diagramming |
-| **Project Management**| [Notion](https://notion.so) | Task tracking & Documentation |
 | **Version Control** | GitHub | Code collaboration and versioning |
 
 ---
@@ -38,11 +36,18 @@ This repository showcases core technical competencies for:
 ## 🚀 Project Requirements
 
 ### 1️⃣ Data Engineering (Building the Warehouse)
-**Objective:** Consolidate disparate sales data into a "Single Source of Truth."
-* **Multi-Source Integration:** Ingested and joined data from **ERP** and **CRM** systems.
-* **Data Governance:** Cleansed and resolved quality issues (nulls, duplicates, and data type standardization) in the Silver layer.
-* **Unified Model:** Designed a Star Schema optimized for downstream analytical queries.
-* **Performance:** Implemented indexing and schema design focused on query speed.
+* **Data Architecture:** Designing a Modern Data Warehouse Using Medallion Architecture Bronze, Silver, and Gold layers. ETL Pipelines: Extracting, transforming, and loading data from source systems into the warehouse. Data Modeling: Developing fact and dimension tables optimized for analytical queries. Analytics & Reporting: Creating SQL-based reports and dashboards for actionable insights. 🎯 This repository is an excellent resource for professionals and students looking to showcase expertise in:
+* SQL Development Data Architect Data Engineering ETL Pipeline Developer Data Modeling Data Analytics
+* **Datasets:** Access to the project dataset (csv files). SQL Server Express: Lightweight server for hosting your SQL database.
+* **SQL Server Management Studio (SSMS):** GUI for managing and interacting with databases.
+* **Git Repository:** Set up a GitHub account and repository to manage, version, and collaborate on your code efficiently.
+* **DrawIO:** Design data architecture, models, flows, and diagrams.
+* **Project Requirements:** Building the Data Warehouse (Data Engineering) Objective. Develop a modern data warehouse using SQL Server to consolidate sales data, enabling analytical reporting and informed decision-making.
+* **Specifications Data Sources:** Import data from two source systems (ERP and CRM) provided as CSV files.
+* **Data Quality:** Cleanse and resolve data quality issues prior to analysis.
+* **Integration:** Combine both sources into a single, user-friendly data model designed for analytical queries.
+* **Scope:** Focus on the latest dataset only; historization of data is not required.
+* **Documentation:** Provide clear documentation of the data model to support both business stakeholders and analytics teams.
 
 [Image of Star Schema showing fact and dimension tables]
 
@@ -53,11 +58,3 @@ This repository showcases core technical competencies for:
 * 📈 **Sales Trends:** Period-over-period growth and performance forecasting.
 
 ---
-
-## 📁 Repository Structure
-```text
-├── 1_Architecture/      # Diagrams and Medallion flowcharts
-├── 2_Scripts/           # SQL DDL/DML for Bronze, Silver, and Gold layers
-├── 3_Data/              # CSV Source files (ERP & CRM) - Anonymized
-├── 4_Analytics/         # SQL scripts for complex business reports
-└── README.md            # Project documentation
